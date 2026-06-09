@@ -1,0 +1,7 @@
+name: astrbot_plugin_malody2osu # 插件唯一识别名，以 astrbot_plugin_ 前缀开头
+display_name: Malody to osu!mania # 用于展示的名字（需要 AstrBot >= v4.5.0）
+desc: 将 Malody 谱面文件（.mc / .mcz / .zip）转换为 osu!mania 谱面包（.osz）并回传。核心逻辑移植自独立脚本 malody2osu（original by Jakads, modified by Eric Zhao）。
+short_desc: Malody 谱面转 osu!mania (.osz)
+version: v1.0.0 # 插件版本号
+author: ZHAO20060708 # 作者
+repo: https://github.com/ZHAO20060708/malody2osu # 插件的仓库地址
