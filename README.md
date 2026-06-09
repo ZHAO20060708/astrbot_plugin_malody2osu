@@ -1,5 +1,7 @@
 # astrbot_plugin_malody2osu
 
+MADE BY CLAUDE OPUS 4.8
+
 将 **Malody** 谱面文件（`.mc` / `.mcz` / `.zip`）转换为 **osu!mania** 谱面包（`.osz`）的 AstrBot 插件。
 
 核心转换逻辑移植自独立命令行脚本 [malody2osu](https://github.com/ZHAO20060708/malody2osu)（original by Jakads，modified by Eric Zhao），时序点（TimingPoints）、变速效果（SV）与物件（HitObjects）的计算与原脚本保持一致。
