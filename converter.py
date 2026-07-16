@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import stat
 import zipfile
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 # File names disallowed on Windows/Linux; mirrors the CLI's sanitize_filename.
@@ -214,7 +217,7 @@ def convert_mc_file(mc_path: str) -> ChartResult:
                 else:
                     continue
 
-            if not n.get('endbeat') is None:
+            if n.get('endbeat') is not None:
                 for b in line:
                     if _beat(b['beat']) > _beat(n['endbeat']):
                         k += 1
@@ -294,7 +297,12 @@ def _iter_mc_files(root: str):
                 yield os.path.join(dirpath, name)
 
 
-def convert_to_osz(input_path: str, file_name: str, output_dir: str) -> OszResult:
+def convert_to_osz(
+    input_path: str,
+    file_name: str,
+    output_dir: str,
+    max_extracted_size_bytes: int = 500 * 1024 * 1024,
+) -> OszResult:
     """Convert an uploaded ``.mc`` / ``.mcz`` / ``.zip`` into one ``.osz`` mapset.
 
     ``input_path`` is the local path of the uploaded file, ``file_name`` its
@@ -309,7 +317,12 @@ def convert_to_osz(input_path: str, file_name: str, output_dir: str) -> OszResul
     if ext == '.mc':
         return _convert_single(input_path, file_name, output_dir)
     if ext in ('.mcz', '.zip'):
-        return _convert_archive(input_path, file_name, output_dir)
+        return _convert_archive(
+            input_path,
+            file_name,
+            output_dir,
+            max_extracted_size_bytes,
+        )
     raise ValueError("仅支持 .mc / .mcz / .zip 文件。")
 
 
@@ -341,11 +354,53 @@ def _convert_single(input_path: str, file_name: str, output_dir: str) -> OszResu
     return result
 
 
-def _convert_archive(input_path: str, file_name: str, output_dir: str) -> OszResult:
+def _safe_extract_archive(
+    archive: zipfile.ZipFile,
+    extract_dir: str,
+    max_extracted_size_bytes: int,
+) -> None:
+    """Extract a Malody archive without path traversal, links, or zip bombs."""
+    root = Path(extract_dir).resolve()
+    total_size = 0
+
+    for info in archive.infolist():
+        total_size += max(0, info.file_size)
+        if total_size > max_extracted_size_bytes:
+            raise ValueError(
+                "压缩包解压后过大，超过 "
+                f"{max_extracted_size_bytes / 1024 / 1024:.0f} MB 限制。"
+            )
+
+        normalized_name = info.filename.replace("\\", "/")
+        target = (root / normalized_name).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(f"压缩包包含不安全路径：{info.filename}") from exc
+
+        unix_mode = info.external_attr >> 16
+        if stat.S_ISLNK(unix_mode):
+            raise ValueError(f"压缩包包含不支持的符号链接：{info.filename}")
+
+        if info.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with archive.open(info) as source, target.open("wb") as destination:
+            shutil.copyfileobj(source, destination)
+
+
+def _convert_archive(
+    input_path: str,
+    file_name: str,
+    output_dir: str,
+    max_extracted_size_bytes: int,
+) -> OszResult:
     extract_dir = os.path.join(output_dir, 'extracted')
     os.makedirs(extract_dir, exist_ok=True)
     with zipfile.ZipFile(input_path) as archive:
-        archive.extractall(extract_dir)
+        _safe_extract_archive(archive, extract_dir, max_extracted_size_bytes)
 
     charts: list[ChartResult] = []
     skipped: list[str] = []

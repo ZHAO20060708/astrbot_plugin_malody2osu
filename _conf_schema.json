@@ -1,0 +1,20 @@
+{
+  "max_file_size_mb": {
+    "type": "int",
+    "description": "允许处理的单个上传文件大小上限（MB）",
+    "hint": "设置为 0 表示不限制上传文件大小。",
+    "default": 50
+  },
+  "max_extracted_size_mb": {
+    "type": "int",
+    "description": "压缩包解压后的总大小上限（MB）",
+    "hint": "用于防止异常压缩包占满磁盘。",
+    "default": 500
+  },
+  "cleanup_delay_seconds": {
+    "type": "int",
+    "description": "转换结果发送后延迟清理的秒数",
+    "hint": "至少为 10 秒，避免消息平台尚未读取文件时提前删除。",
+    "default": 120
+  }
+}
